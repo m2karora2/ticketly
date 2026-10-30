@@ -13,6 +13,6 @@ public class HealthTests(WebApplicationFactory<Program> factory)
 
         var response = await client.GetAsync("/health");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
