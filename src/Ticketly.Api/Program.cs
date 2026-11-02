@@ -47,6 +47,19 @@ app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db
     return Results.Created($"/tickets/{ticket.Id}", ticket.ToResponse());
 });
 
+app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db) =>
+{
+    // 1. fetch the ticket by id
+    var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
+    // 2. if it doesn't exist -> Results.NotFound()
+    if(ticket is null)
+    {
+        return Results.NotFound();
+    }
+    // 3. otherwise -> Results.Ok(ticket.ToResponse())
+    return Results.Ok(ticket.ToResponse());
+});
+
 app.Run();
 
 
