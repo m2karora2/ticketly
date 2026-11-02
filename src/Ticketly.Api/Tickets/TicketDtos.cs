@@ -20,6 +20,8 @@ public record TicketResponse(
     DateTimeOffset? ResolvedAt
 );
 
+public record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
+
 public static class TicketMappings
 {
     public static TicketResponse ToResponse(this Ticket t) =>

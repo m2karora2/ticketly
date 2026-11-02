@@ -60,6 +60,32 @@ app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db) =>
     return Results.Ok(ticket.ToResponse());
 });
 
+app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, int page = 1, int pageSize = 20) =>
+{
+    page = Math.Max(page, 1);
+    pageSize = Math.Clamp(pageSize, 1, 50);
+
+    var query = db.Tickets.AsNoTracking();
+
+    if (status is not null)
+    {
+        query = query.Where(t => t.Status == status.Value);
+    }
+
+    var totalCount = await query.CountAsync();
+
+    var tickets = await query
+        .OrderByDescending(t => t.Priority)
+        .ThenBy(t => t.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+    var items = tickets.Select(t => t.ToResponse()).ToList();
+
+    return Results.Ok(new PagedResponse<TicketResponse>(items, page, pageSize, totalCount));
+});
+
 app.Run();
 
 

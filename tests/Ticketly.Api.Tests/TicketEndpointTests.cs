@@ -68,4 +68,43 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task List_tickets_caps_page_size_at_50()
+    {
+        var response = await _client.GetAsync("/tickets?pageSize=100000");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        Assert.Equal(50, json!["pageSize"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task List_tickets_returns_highest_priority_first()
+    {
+        var lowId = await CreateTicketAsync("Low");
+        var urgentId = await CreateTicketAsync("Urgent");
+
+        var response = await _client.GetAsync("/tickets?status=Open&pageSize=50");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        var ids = json!["items"]!.AsArray()
+            .Select(i => i!["id"]!.GetValue<string>())
+            .ToList();
+
+        var urgentIndex = ids.IndexOf(urgentId);
+        var lowIndex = ids.IndexOf(lowId);
+
+        Assert.True(urgentIndex >= 0 && lowIndex >= 0, "both tickets should be on the first page");
+        Assert.True(urgentIndex < lowIndex);
+    }
+
+    private async Task<string> CreateTicketAsync(string priority)
+    {
+        var body = new { title = $"{priority} ticket", description = "Test", priority };
+        var response = await _client.PostAsJsonAsync("/tickets", body);
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        return json!["id"]!.GetValue<string>();
+    }
+
 }
