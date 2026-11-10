@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Ticketly.Api.Data;
@@ -16,16 +18,36 @@ builder.Services.AddDbContext<TicketlyDbContext>(options =>
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddValidation();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Auth:Authority"];
+        options.Audience = builder.Configuration["Auth:Audience"];
+        options.RequireHttpsMetadata = false;   // local http only
+        options.MapInboundClaims = false;       // keep claim names like "sub"
+    });
+builder.Services.AddAuthorization();
 //END
 
 //Map Requests
 var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
+
+app.MapGet("/me", (ClaimsPrincipal user) => new
+{
+    Sub = user.FindFirstValue("sub"),
+    Username = user.FindFirstValue("preferred_username"),
+}).RequireAuthorization();
 
 app.MapHealthChecks("/health");
 
