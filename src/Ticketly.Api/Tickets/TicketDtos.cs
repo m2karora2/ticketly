@@ -14,6 +14,7 @@ public record TicketResponse(
     string Description,
     TicketStatus Status,
     TicketPriority Priority,
+    string CustomerId,
     string? AssigneeId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
@@ -25,6 +26,6 @@ public record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int PageSize, i
 public static class TicketMappings
 {
     public static TicketResponse ToResponse(this Ticket t) =>
-        new(t.Id, t.Title, t.Description, t.Status, t.Priority,
+        new(t.Id, t.Title, t.Description, t.Status, t.Priority, t.CustomerId,
             t.AssigneeId, t.CreatedAt, t.UpdatedAt, t.ResolvedAt);
 }

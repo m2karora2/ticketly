@@ -6,6 +6,8 @@ using Scalar.AspNetCore;
 using Ticketly.Api.Data;
 using Ticketly.Api.Domain;
 using Ticketly.Api.Tickets;
+using System.Text.Json;
+using Ticketly.Api.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +29,25 @@ builder.Services
         options.Audience = builder.Configuration["Auth:Audience"];
         options.RequireHttpsMetadata = false;   // local http only
         options.MapInboundClaims = false;       // keep claim names like "sub"
+        options.TokenValidationParameters.RoleClaimType = "role";
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var identity = (ClaimsIdentity)context.Principal!.Identity!;
+                var realmAccess = context.Principal.FindFirst("realm_access")?.Value;
+                if (realmAccess is not null)
+                {
+                    using var doc = JsonDocument.Parse(realmAccess);
+                    if (doc.RootElement.TryGetProperty("roles", out var roles))
+                    {
+                        foreach (var role in roles.EnumerateArray())
+                            identity.AddClaim(new Claim("role", role.GetString()!));
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddAuthorization();
 //END
@@ -47,48 +68,53 @@ app.MapGet("/me", (ClaimsPrincipal user) => new
 {
     Sub = user.FindFirstValue("sub"),
     Username = user.FindFirstValue("preferred_username"),
+    Roles = user.FindAll("role").Select(c => c.Value),
 }).RequireAuthorization();
 
 app.MapHealthChecks("/health");
 
 app.MapGet("/", () => "Ticketly API");
 
-app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db) =>
+app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db, ClaimsPrincipal user) =>
 {
     var ticket = new Ticket
     {
         Title = request.Title,
         Description = request.Description,
         Priority = request.Priority ?? TicketPriority.Medium,
-        CustomerId = "temp-customer" // TEMPORARY: comes from the auth token in Week 3
+        CustomerId =  user.GetUserId()
     };
 
     db.Tickets.Add(ticket);
     await db.SaveChangesAsync();
 
     return Results.Created($"/tickets/{ticket.Id}", ticket.ToResponse());
-});
+}).RequireAuthorization();
 
-app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db) =>
+app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db, ClaimsPrincipal user) =>
 {
     // 1. fetch the ticket by id
     var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
     // 2. if it doesn't exist -> Results.NotFound()
-    if(ticket is null)
+    if(ticket is null || (!user.IsStaff() && ticket.CustomerId != user.GetUserId()))
     {
         return Results.NotFound();
     }
     // 3. otherwise -> Results.Ok(ticket.ToResponse())
     return Results.Ok(ticket.ToResponse());
-});
+}).RequireAuthorization();
 
-app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, int page = 1, int pageSize = 20) =>
+app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, ClaimsPrincipal user, int page = 1, int pageSize = 20) =>
 {
     page = Math.Max(page, 1);
     pageSize = Math.Clamp(pageSize, 1, 50);
 
     var query = db.Tickets.AsNoTracking();
-
+    if (!user.IsStaff())
+    {
+        var userId = user.GetUserId();
+        query = query.Where(t => t.CustomerId == userId);
+    }
     if (status is not null)
     {
         query = query.Where(t => t.Status == status.Value);
@@ -106,7 +132,7 @@ app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, int pa
     var items = tickets.Select(t => t.ToResponse()).ToList();
 
     return Results.Ok(new PagedResponse<TicketResponse>(items, page, pageSize, totalCount));
-});
+}).RequireAuthorization();
 
 app.Run();
 
