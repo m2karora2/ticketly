@@ -2,6 +2,7 @@
   "users": [
     {
       "username": "alice",
+      "id": "00000000-0000-4000-8000-000000000001",
       "enabled": true,
       "email": "alice@ticketly.local",
       "emailVerified": true,
@@ -14,6 +15,7 @@
     },
     {
       "username": "bob",
+      "id": "00000000-0000-4000-8000-000000000002",
       "enabled": true,
       "email": "bob@ticketly.local",
       "emailVerified": true,
@@ -26,6 +28,7 @@
     },
     {
       "username": "carol",
+      "id": "00000000-0000-4000-8000-000000000003",
       "enabled": true,
       "email": "carol@ticketly.local",
       "emailVerified": true,
