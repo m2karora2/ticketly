@@ -1,12 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Ticketly.Api.Tickets;
 
 namespace Ticketly.Api.Tests;
 
 public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateClientFor("alice", "customer");
 
     [Fact]
     public async Task Create_ticket_with_valid_data_returns_201()
@@ -97,6 +98,60 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         Assert.True(urgentIndex >= 0 && lowIndex >= 0, "both tickets should be on the first page");
         Assert.True(urgentIndex < lowIndex);
+    }
+
+    [Fact]
+    public async Task Create_ticket_without_login_returns_401()
+    {
+        var client = factory.CreateClient();   // plain client: no headers, so anonymous
+
+        var response = await client.PostAsJsonAsync("/tickets",
+            new { title = "No login", description = "should be rejected" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Customer_cannot_read_another_users_ticket()
+    {
+        var bob = factory.CreateClientFor("bob", "support");
+        var alice = factory.CreateClientFor("alice", "customer");
+
+        var created = await bob.PostAsJsonAsync("/tickets",
+            new { title = "Bob's ticket", description = "Created by bob" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var json = await created.Content.ReadFromJsonAsync<JsonNode>();
+        var ticketId = json!["id"]!.GetValue<Guid>();
+
+        // Control: the ticket really exists, bob can read it
+        var asBob = await bob.GetAsync($"/tickets/{ticketId}");
+        Assert.Equal(HttpStatusCode.OK, asBob.StatusCode);
+
+        // The actual rule: alice is not the owner
+        var asAlice = await alice.GetAsync($"/tickets/{ticketId}");
+        Assert.Equal(HttpStatusCode.NotFound, asAlice.StatusCode);
+    }
+
+    [Fact]
+    public async Task Customer_list_only_contains_their_own_tickets()
+    {
+        var customerId = $"customer-{Guid.NewGuid()}";
+        var customer = factory.CreateClientFor(customerId, "customer");
+        var staff = factory.CreateClientFor("bob", "support");
+
+        var mine = await customer.PostAsJsonAsync("/tickets",
+            new { title = "Mine", description = "Created by the customer" });
+        Assert.Equal(HttpStatusCode.Created, mine.StatusCode);
+
+        var notMine = await staff.PostAsJsonAsync("/tickets",
+            new { title = "Not mine", description = "Created by staff" });
+        Assert.Equal(HttpStatusCode.Created, notMine.StatusCode);
+
+        var list = await customer.GetFromJsonAsync<JsonNode>("/tickets");
+
+        Assert.Equal(1, list!["totalCount"]!.GetValue<int>());
+        foreach (var item in list["items"]!.AsArray())
+            Assert.Equal(customerId, item!["customerId"]!.GetValue<string>());
     }
 
     private async Task<string> CreateTicketAsync(string priority)

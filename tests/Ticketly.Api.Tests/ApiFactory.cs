@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
@@ -24,6 +26,20 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddAuthentication(TestAuthHandler.Scheme)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
+        });
+    }
+
+    public HttpClient CreateClientFor(string userId, params string[] roles)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-User", userId);
+        if (roles.Length > 0)
+            client.DefaultRequestHeaders.Add("X-Test-Roles", string.Join(',', roles));
+        return client;
     }
 
     async Task IAsyncLifetime.DisposeAsync()
