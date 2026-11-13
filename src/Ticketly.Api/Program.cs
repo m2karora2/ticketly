@@ -98,7 +98,7 @@ app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db
     await db.SaveChangesAsync();
 
     return Results.Created($"/tickets/{ticket.Id}", ticket.ToResponse());
-}).RequireAuthorization();
+}).Produces<TicketResponse>(StatusCodes.Status201Created).RequireAuthorization();
 
 app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db, ClaimsPrincipal user) =>
 {
@@ -111,7 +111,7 @@ app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db, ClaimsPri
     }
     // 3. otherwise -> Results.Ok(ticket.ToResponse())
     return Results.Ok(ticket.ToResponse());
-}).RequireAuthorization();
+}).Produces<TicketResponse>().Produces(StatusCodes.Status404NotFound).RequireAuthorization();
 
 app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, ClaimsPrincipal user, int page = 1, int pageSize = 20) =>
 {
@@ -141,7 +141,7 @@ app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, Claims
     var items = tickets.Select(t => t.ToResponse()).ToList();
 
     return Results.Ok(new PagedResponse<TicketResponse>(items, page, pageSize, totalCount));
-}).RequireAuthorization();
+}).Produces<PagedResponse<TicketResponse>>().RequireAuthorization();
 
 app.Run();
 

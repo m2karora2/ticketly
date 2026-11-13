@@ -1,20 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "react-oidc-context";
+import type { components } from "./api/schema";
 
-type Ticket = { id: string; title: string; status: string; priority: string };
-type Paged<T> = {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-};
+//type Ticket = components["schemas"]["TicketResponse"];
+type Paged = components["schemas"]["PagedResponseOfTicketResponse"];
 
 export function TicketList() {
   const auth = useAuth();
 
   const { data, isPending, error } = useQuery({
     queryKey: ["tickets"],
-    queryFn: async (): Promise<Paged<Ticket>> => {
+    queryFn: async (): Promise<Paged> => {
       const res = await fetch("http://localhost:5057/tickets", {
         headers: { Authorization: `Bearer ${auth.user?.access_token}` },
       });
