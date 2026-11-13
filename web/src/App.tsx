@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
+import { TicketList } from "./TicketList";
 
 function App() {
   const auth = useAuth();
@@ -31,6 +32,7 @@ function App() {
       <button onClick={() => auth.removeUser()}>Log out</button>
       <button onClick={callApi}>Call API /me</button>
       <pre>{apiResult}</pre>
+      <TicketList></TicketList>
     </div>
   );
 }
