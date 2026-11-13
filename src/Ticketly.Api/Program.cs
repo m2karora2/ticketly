@@ -20,7 +20,15 @@ builder.Services.AddDbContext<TicketlyDbContext>(options =>
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddValidation();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy => policy
+        .WithOrigins("http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
 
+//AUTH
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -55,6 +63,7 @@ builder.Services.AddAuthorization();
 //Map Requests
 var app = builder.Build();
 
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -82,7 +91,7 @@ app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db
         Title = request.Title,
         Description = request.Description,
         Priority = request.Priority ?? TicketPriority.Medium,
-        CustomerId =  user.GetUserId()
+        CustomerId = user.GetUserId()
     };
 
     db.Tickets.Add(ticket);
@@ -96,7 +105,7 @@ app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db, ClaimsPri
     // 1. fetch the ticket by id
     var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
     // 2. if it doesn't exist -> Results.NotFound()
-    if(ticket is null || (!user.IsStaff() && ticket.CustomerId != user.GetUserId()))
+    if (ticket is null || (!user.IsStaff() && ticket.CustomerId != user.GetUserId()))
     {
         return Results.NotFound();
     }
