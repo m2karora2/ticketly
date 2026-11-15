@@ -160,7 +160,7 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Customer_cannot_update_ticket()
     {
         var customer = factory.CreateClientFor("alice", "customer");
-       
+
         var response = await customer.PostAsJsonAsync("/tickets",
             new { title = "Alice Ticket", description = "Created by the customer Alice" });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -169,7 +169,7 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var ticketId = json!["id"]!.GetValue<Guid>();
 
         var patchResponse = await customer.PatchAsJsonAsync($"/tickets/{ticketId}",
-            new {status = TicketStatus.InProgress });
+            new { status = TicketStatus.InProgress });
 
         Assert.Equal(HttpStatusCode.Forbidden, patchResponse.StatusCode);
     }
@@ -179,7 +179,7 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var customer = factory.CreateClientFor("alice", "customer");
         var support = factory.CreateClientFor("bob", "support");
-       
+
         var response = await customer.PostAsJsonAsync("/tickets",
             new { title = "Alice Ticket", description = "Created by the customer Alice" });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -188,7 +188,7 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var ticketId = json!["id"]!.GetValue<Guid>();
 
         var patchResponse = await support.PatchAsJsonAsync($"/tickets/{ticketId}",
-            new {status = TicketStatus.Resolved,  assigneeId = "bob" });
+            new { status = TicketStatus.Resolved, assigneeId = "bob" });
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
         var check = await customer.GetAsync($"/tickets/{ticketId}");
         var saved = await check.Content.ReadFromJsonAsync<JsonNode>();
@@ -202,6 +202,77 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var response = await _client.PostAsJsonAsync("/tickets", body);
         var json = await response.Content.ReadFromJsonAsync<JsonNode>();
         return json!["id"]!.GetValue<string>();
+    }
+
+    private static async Task<Guid> CreateTicketForAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/tickets",
+            new { title = "Test ticket", description = "Created by a test" });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        return json!["id"]!.GetValue<Guid>();
+    }
+
+    [Fact]
+    public async Task Customer_can_comment_on_own_ticket()
+    {
+        var alice = factory.CreateClientFor("alice", "customer");
+        var ticketId = await CreateTicketForAsync(alice);
+
+        var response = await alice.PostAsJsonAsync($"/tickets/{ticketId}/comments",
+            new { body = "Any update?" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        Assert.Equal("alice", json!["authorId"]!.GetValue<string>());
+        Assert.False(json["isInternal"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task Customer_cannot_comment_on_another_users_ticket()
+    {
+        var bob = factory.CreateClientFor("bob", "support");
+        var alice = factory.CreateClientFor("alice", "customer");
+        var ticketId = await CreateTicketForAsync(bob);
+
+        var response = await alice.PostAsJsonAsync($"/tickets/{ticketId}/comments",
+            new { body = "Not my ticket" });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Customer_cannot_post_internal_note()
+    {
+        var alice = factory.CreateClientFor("alice", "customer");
+        var ticketId = await CreateTicketForAsync(alice);
+
+        var response = await alice.PostAsJsonAsync($"/tickets/{ticketId}/comments",
+            new { body = "Sneaky", isInternal = true });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Customer_does_not_see_internal_notes_but_support_does()
+    {
+        var alice = factory.CreateClientFor("alice", "customer");
+        var bob = factory.CreateClientFor("bob", "support");
+        var ticketId = await CreateTicketForAsync(alice);
+
+        var publicNote = await bob.PostAsJsonAsync($"/tickets/{ticketId}/comments",
+            new { body = "We are looking into it", isInternal = false });
+        var internalNote = await bob.PostAsJsonAsync($"/tickets/{ticketId}/comments",
+            new { body = "Customer seems confused, escalate", isInternal = true });
+        Assert.Equal(HttpStatusCode.Created, publicNote.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, internalNote.StatusCode);
+
+        var asAlice = await alice.GetFromJsonAsync<JsonNode>($"/tickets/{ticketId}");
+        var asBob = await bob.GetFromJsonAsync<JsonNode>($"/tickets/{ticketId}");
+
+        Assert.Single(asAlice!["comments"]!.AsArray());
+        Assert.False(asAlice["comments"]![0]!["isInternal"]!.GetValue<bool>());
+        Assert.Equal(2, asBob!["comments"]!.AsArray().Count);
     }
 
 }
