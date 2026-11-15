@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Http;
+using Ticketly.Api.Domain;
 using Ticketly.Api.Tickets;
 
 namespace Ticketly.Api.Tests;
@@ -154,6 +156,46 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
             Assert.Equal(customerId, item!["customerId"]!.GetValue<string>());
     }
 
+    [Fact]
+    public async Task Customer_cannot_update_ticket()
+    {
+        var customer = factory.CreateClientFor("alice", "customer");
+       
+        var response = await customer.PostAsJsonAsync("/tickets",
+            new { title = "Alice Ticket", description = "Created by the customer Alice" });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        var ticketId = json!["id"]!.GetValue<Guid>();
+
+        var patchResponse = await customer.PatchAsJsonAsync($"/tickets/{ticketId}",
+            new {status = TicketStatus.InProgress });
+
+        Assert.Equal(HttpStatusCode.Forbidden, patchResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Support_can_assign_and_resolve_ticket()
+    {
+        var customer = factory.CreateClientFor("alice", "customer");
+        var support = factory.CreateClientFor("bob", "support");
+       
+        var response = await customer.PostAsJsonAsync("/tickets",
+            new { title = "Alice Ticket", description = "Created by the customer Alice" });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var json = await response.Content.ReadFromJsonAsync<JsonNode>();
+        var ticketId = json!["id"]!.GetValue<Guid>();
+
+        var patchResponse = await support.PatchAsJsonAsync($"/tickets/{ticketId}",
+            new {status = TicketStatus.Resolved,  assigneeId = "bob" });
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+        var check = await customer.GetAsync($"/tickets/{ticketId}");
+        var saved = await check.Content.ReadFromJsonAsync<JsonNode>();
+        Assert.NotNull(saved!["resolvedAt"]);
+        Assert.Equal("bob", saved["assigneeId"]!.GetValue<string>());
+        Assert.Equal("Resolved", saved!["status"]!.GetValue<string>());
+    }
     private async Task<string> CreateTicketAsync(string priority)
     {
         var body = new { title = $"{priority} ticket", description = "Test", priority };
