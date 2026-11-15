@@ -160,7 +160,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TicketResponse"];
+                        "application/json": components["schemas"]["TicketDetailResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -177,6 +177,93 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateTicketRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tickets/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -188,6 +275,20 @@ export interface components {
             sub: null | string;
             username: null | string;
             roles: null | string[];
+        };
+        CommentResponse: {
+            /** Format: uuid */
+            id: string;
+            authorId: string;
+            body: string;
+            isInternal: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateCommentRequest: {
+            body: string;
+            /** @default false */
+            isInternal: boolean;
         };
         CreateTicketRequest: {
             title: string;
@@ -202,6 +303,23 @@ export interface components {
             pageSize: number | string;
             /** Format: int32 */
             totalCount: number | string;
+        };
+        TicketDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description: string;
+            status: components["schemas"]["TicketStatus"];
+            priority: components["schemas"]["TicketPriority"];
+            customerId: string;
+            assigneeId: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            resolvedAt: null | string;
+            comments: components["schemas"]["CommentResponse"][];
         };
         /** @enum {unknown} */
         TicketPriority: "Low" | "Medium" | "High" | "Urgent";
@@ -223,6 +341,10 @@ export interface components {
         };
         /** @enum {unknown} */
         TicketStatus: "Open" | "InProgress" | "Resolved";
+        UpdateTicketRequest: {
+            status: null | components["schemas"]["TicketStatus"];
+            assigneeId: null | string;
+        };
     };
     responses: never;
     parameters: never;

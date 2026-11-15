@@ -19,14 +19,19 @@ export function TicketList() {
     },
   });
 
-  if (isPending) return <p>Loading tickets...</p>;
+  if (isPending) return <p className="muted">Loading tickets...</p>;
   if (error) return <p>Error: {error.message}</p>;
+  if (data.items.length === 0) return <p className="muted">No tickets yet.</p>;
 
   return (
-    <ul>
+    <ul className="tickets">
       {data.items.map((t) => (
         <li key={t.id}>
-          {t.title} ({t.status}, {t.priority})
+          <span className="ticket-title">{t.title}</span>
+          <span className="badges">
+            <span className={`badge status-${t.status}`}>{t.status}</span>
+            <span className={`badge priority-${t.priority}`}>{t.priority}</span>
+          </span>
         </li>
       ))}
     </ul>

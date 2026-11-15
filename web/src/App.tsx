@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
+import { CreateTicketForm } from "./CreateTicketForm";
 import { TicketList } from "./TicketList";
 
 function App() {
@@ -13,27 +14,58 @@ function App() {
     setApiResult(`${res.status} ${await res.text()}`);
   }
 
-  if (auth.isLoading) return <p>Loading...</p>;
-  if (auth.error) return <p>Auth error: {auth.error.message}</p>;
+  if (auth.isLoading)
+    return (
+      <main>
+        <p className="muted">Loading...</p>
+      </main>
+    );
+  if (auth.error)
+    return (
+      <main>
+        <p>Auth error: {auth.error.message}</p>
+      </main>
+    );
 
   if (!auth.isAuthenticated) {
     return (
-      <div>
+      <main className="login">
         <h1>Ticketly</h1>
+        <p>Support helpdesk</p>
         <button onClick={() => auth.signinRedirect()}>Log in</button>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div>
-      <h1>Ticketly</h1>
-      <p>Logged in as {auth.user?.profile.preferred_username}</p>
-      <button onClick={() => auth.removeUser()}>Log out</button>
-      <button onClick={callApi}>Call API /me</button>
-      <pre>{apiResult}</pre>
-      <TicketList></TicketList>
-    </div>
+    <main>
+      <header className="topbar">
+        <h1>Ticketly</h1>
+        <div className="user">
+          <span>{auth.user?.profile.preferred_username}</span>
+          <button className="secondary" onClick={() => auth.removeUser()}>
+            Log out
+          </button>
+        </div>
+      </header>
+
+      <section className="card">
+        <CreateTicketForm />
+      </section>
+
+      <section className="card">
+        <h2>Tickets</h2>
+        <TicketList />
+      </section>
+
+      <details className="card">
+        <summary>Debug</summary>
+        <button className="secondary" onClick={callApi}>
+          Call API /me
+        </button>
+        <pre>{apiResult}</pre>
+      </details>
+    </main>
   );
 }
 
