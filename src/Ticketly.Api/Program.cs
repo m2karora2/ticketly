@@ -20,6 +20,8 @@ builder.Services.AddDbContext<TicketlyDbContext>(options =>
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddValidation();
+
+//cors
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy => policy
@@ -57,7 +59,8 @@ builder.Services
             }
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("Staff", policy => policy.RequireRole("support", "admin"));
 //END
 
 //Map Requests
@@ -142,6 +145,26 @@ app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, Claims
 
     return Results.Ok(new PagedResponse<TicketResponse>(items, page, pageSize, totalCount));
 }).Produces<PagedResponse<TicketResponse>>().RequireAuthorization();
+
+app.MapPatch("/tickets/{id:guid}", async (Guid id, UpdateTicketRequest request, TicketlyDbContext db) =>
+{
+    var ticket = await db.Tickets.FindAsync(id);
+    if (ticket is null) return Results.NotFound();
+
+    if (request.Status is { } status)
+    {
+        ticket.Status = status;
+        ticket.ResolvedAt = status == TicketStatus.Resolved ? DateTimeOffset.UtcNow : null;
+    }
+    if (request.AssigneeId is not null)
+        ticket.AssigneeId = request.AssigneeId;
+
+    ticket.UpdatedAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync();
+    return Results.Ok(ticket.ToResponse());
+}).RequireAuthorization("Staff")
+.Produces<TicketResponse>()
+.Produces(StatusCodes.Status404NotFound);
 
 app.Run();
 

@@ -29,3 +29,7 @@ public static class TicketMappings
         new(t.Id, t.Title, t.Description, t.Status, t.Priority, t.CustomerId,
             t.AssigneeId, t.CreatedAt, t.UpdatedAt, t.ResolvedAt);
 }
+
+public record UpdateTicketRequest(
+    TicketStatus? Status,
+    [property: StringLength(100)] string? AssigneeId);
