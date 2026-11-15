@@ -103,18 +103,23 @@ app.MapPost("/tickets", async (CreateTicketRequest request, TicketlyDbContext db
     return Results.Created($"/tickets/{ticket.Id}", ticket.ToResponse());
 }).Produces<TicketResponse>(StatusCodes.Status201Created).RequireAuthorization();
 
-app.MapGet("/tickets/{id:guid}", async (Guid id, TicketlyDbContext db, ClaimsPrincipal user) =>
+app.MapGet("/tickets/{id:guid}", async (Guid id, ClaimsPrincipal user, TicketlyDbContext db) =>
 {
-    // 1. fetch the ticket by id
-    var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
-    // 2. if it doesn't exist -> Results.NotFound()
-    if (ticket is null || (!user.IsStaff() && ticket.CustomerId != user.GetUserId()))
-    {
+    var isStaff = user.IsStaff();
+    var ticket = await db.Tickets.AsNoTracking()
+        .Include(t => t.Comments
+            .Where(c => isStaff || !c.IsInternal)
+            .OrderBy(c => c.CreatedAt))
+        .FirstOrDefaultAsync(t => t.Id == id);
+
+    if (ticket is null || (!isStaff && ticket.CustomerId != user.GetUserId()))
         return Results.NotFound();
-    }
-    // 3. otherwise -> Results.Ok(ticket.ToResponse())
-    return Results.Ok(ticket.ToResponse());
-}).Produces<TicketResponse>().Produces(StatusCodes.Status404NotFound).RequireAuthorization();
+
+    return Results.Ok(ticket.ToDetailResponse());
+})
+.RequireAuthorization()
+.Produces<TicketDetailResponse>()
+.Produces(StatusCodes.Status404NotFound);
 
 app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, ClaimsPrincipal user, int page = 1, int pageSize = 20) =>
 {
@@ -165,6 +170,35 @@ app.MapPatch("/tickets/{id:guid}", async (Guid id, UpdateTicketRequest request, 
 }).RequireAuthorization("Staff")
 .Produces<TicketResponse>()
 .Produces(StatusCodes.Status404NotFound);
+
+//comments endpoints
+
+app.MapPost("/tickets/{id:guid}/comments", async (
+    Guid id, CreateCommentRequest request, ClaimsPrincipal user, TicketlyDbContext db) =>
+{
+    var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
+    if (ticket is null || (!user.IsStaff() && ticket.CustomerId != user.GetUserId()))
+        return Results.NotFound();
+
+    if (request.IsInternal && !user.IsStaff())
+        return Results.Forbid();
+
+    var comment = new Comment
+    {
+        TicketId = id,
+        AuthorId = user.GetUserId(),
+        Body = request.Body,
+        IsInternal = request.IsInternal,
+    };
+    db.Comments.Add(comment);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/tickets/{id}", comment.ToResponse());
+})
+.RequireAuthorization()
+.Produces<CommentResponse>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status403Forbidden);
 
 app.Run();
 
