@@ -45,7 +45,7 @@ function App() {
         <h1>Ticketly</h1>
         <div className="user">
           <span>{auth.user?.profile.preferred_username}</span>
-          <button className="secondary" onClick={() => auth.removeUser()}>
+          <button className="secondary" onClick={() => auth.signoutRedirect()}>
             Log out
           </button>
         </div>
