@@ -19,7 +19,7 @@ public class TestAuthHandler(
         if (!Request.Headers.TryGetValue("X-Test-User", out var user))
             return Task.FromResult(AuthenticateResult.NoResult());
 
-        var claims = new List<Claim> { new("sub", user.ToString()) };
+        var claims = new List<Claim> { new("sub", user.ToString()), new("name", user.ToString()) };
         if (Request.Headers.TryGetValue("X-Test-Roles", out var roles))
         {
             claims.AddRange(roles.ToString()

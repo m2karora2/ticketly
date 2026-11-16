@@ -33,6 +33,11 @@ namespace Ticketly.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Body")
                         .IsRequired()
                         .HasMaxLength(5000)
@@ -61,6 +66,10 @@ namespace Ticketly.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AssigneeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("AssigneeName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 

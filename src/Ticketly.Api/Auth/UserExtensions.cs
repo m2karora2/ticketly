@@ -10,4 +10,7 @@ public static class UserExtensions
 
     public static bool IsStaff(this ClaimsPrincipal user) =>
         user.IsInRole("support") || user.IsInRole("admin");
+
+    public static string GetDisplayName(this ClaimsPrincipal user) =>
+        user.FindFirstValue("name") ?? user.FindFirstValue("preferred_username") ?? user.GetUserId();
 }

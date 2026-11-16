@@ -26,6 +26,7 @@ public class TicketlyDbContext(DbContextOptions<TicketlyDbContext> options) : Db
 
             e.Property(t => t.CustomerId).IsRequired().HasMaxLength(100);
             e.Property(t => t.AssigneeId).HasMaxLength(100);
+            e.Property(t => t.AssigneeName).HasMaxLength(100);
 
             // Support queue: open tickets, highest priority first, oldest first
             e.HasIndex(t => new { t.Status, t.Priority, t.CreatedAt })
@@ -42,6 +43,7 @@ public class TicketlyDbContext(DbContextOptions<TicketlyDbContext> options) : Db
 
             e.Property(c => c.Body).IsRequired().HasMaxLength(5000);
             e.Property(c => c.AuthorId).IsRequired().HasMaxLength(100);
+            e.Property(c => c.AuthorName).HasMaxLength(100);
 
             e.HasOne(c => c.Ticket)
                 .WithMany(t => t.Comments)
