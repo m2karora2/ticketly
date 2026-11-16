@@ -151,7 +151,7 @@ app.MapGet("/tickets", async (TicketlyDbContext db, TicketStatus? status, Claims
     return Results.Ok(new PagedResponse<TicketResponse>(items, page, pageSize, totalCount));
 }).Produces<PagedResponse<TicketResponse>>().RequireAuthorization();
 
-app.MapPatch("/tickets/{id:guid}", async (Guid id, UpdateTicketRequest request, TicketlyDbContext db) =>
+app.MapPatch("/tickets/{id:guid}", async (Guid id, UpdateTicketRequest request, TicketlyDbContext db, ClaimsPrincipal user) =>
 {
     var ticket = await db.Tickets.FindAsync(id);
     if (ticket is null) return Results.NotFound();
@@ -161,8 +161,11 @@ app.MapPatch("/tickets/{id:guid}", async (Guid id, UpdateTicketRequest request, 
         ticket.Status = status;
         ticket.ResolvedAt = status == TicketStatus.Resolved ? DateTimeOffset.UtcNow : null;
     }
-    if (request.AssigneeId is not null)
-        ticket.AssigneeId = request.AssigneeId;
+    if (request.AssignToMe)
+    {
+        ticket.AssigneeId = user.GetUserId();
+        ticket.AssigneeName = user.GetDisplayName();
+    }
 
     ticket.UpdatedAt = DateTimeOffset.UtcNow;
     await db.SaveChangesAsync();
@@ -187,6 +190,7 @@ app.MapPost("/tickets/{id:guid}/comments", async (
     {
         TicketId = id,
         AuthorId = user.GetUserId(),
+        AuthorName = user.GetDisplayName(),
         Body = request.Body,
         IsInternal = request.IsInternal,
     };

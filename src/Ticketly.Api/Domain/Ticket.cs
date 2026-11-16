@@ -13,6 +13,7 @@ public class Ticket
     public TicketPriority Priority { get; set; } = TicketPriority.Medium;
     public required string CustomerId { get; set; }
     public string? AssigneeId { get; set; }
+    public string? AssigneeName { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ResolvedAt { get; set; }

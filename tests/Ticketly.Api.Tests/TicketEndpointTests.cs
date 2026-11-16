@@ -188,13 +188,14 @@ public class TicketEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var ticketId = json!["id"]!.GetValue<Guid>();
 
         var patchResponse = await support.PatchAsJsonAsync($"/tickets/{ticketId}",
-            new { status = TicketStatus.Resolved, assigneeId = "bob" });
+            new { status = "Resolved", assignToMe = true });
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
         var check = await customer.GetAsync($"/tickets/{ticketId}");
         var saved = await check.Content.ReadFromJsonAsync<JsonNode>();
         Assert.NotNull(saved!["resolvedAt"]);
         Assert.Equal("bob", saved["assigneeId"]!.GetValue<string>());
         Assert.Equal("Resolved", saved!["status"]!.GetValue<string>());
+        Assert.Equal("bob", saved["assigneeName"]!.GetValue<string>());
     }
     private async Task<string> CreateTicketAsync(string priority)
     {

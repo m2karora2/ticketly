@@ -16,6 +16,7 @@ public record TicketResponse(
     TicketPriority Priority,
     string CustomerId,
     string? AssigneeId,
+    string? AssigneeName,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? ResolvedAt
@@ -24,7 +25,7 @@ public record TicketResponse(
 public record TicketDetailResponse(
     Guid Id, string Title, string Description,
     TicketStatus Status, TicketPriority Priority,
-    string CustomerId, string? AssigneeId,
+    string CustomerId, string? AssigneeId, string? AssigneeName,
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? ResolvedAt,
     IReadOnlyList<CommentResponse> Comments);
 
@@ -34,24 +35,22 @@ public static class TicketMappings
 {
     public static TicketResponse ToResponse(this Ticket t) =>
         new(t.Id, t.Title, t.Description, t.Status, t.Priority, t.CustomerId,
-            t.AssigneeId, t.CreatedAt, t.UpdatedAt, t.ResolvedAt);
+            t.AssigneeId, t.AssigneeName, t.CreatedAt, t.UpdatedAt, t.ResolvedAt);
 
     public static CommentResponse ToResponse(this Comment c) =>
-        new(c.Id, c.AuthorId, c.Body, c.IsInternal, c.CreatedAt);
+        new(c.Id, c.AuthorId, c.AuthorName, c.Body, c.IsInternal, c.CreatedAt);
 
     public static TicketDetailResponse ToDetailResponse(this Ticket t) => new(
         t.Id, t.Title, t.Description, t.Status, t.Priority, t.CustomerId, t.AssigneeId,
-        t.CreatedAt, t.UpdatedAt, t.ResolvedAt,
+        t.AssigneeName, t.CreatedAt, t.UpdatedAt, t.ResolvedAt,
         t.Comments.Select(c => c.ToResponse()).ToList());
 }
 
-public record UpdateTicketRequest(
-    TicketStatus? Status,
-    [property: StringLength(100)] string? AssigneeId);
+public record UpdateTicketRequest(TicketStatus? Status, bool AssignToMe = false);
 
 public record CreateCommentRequest(
 [property: Required, StringLength(5000, MinimumLength = 1)] string Body,
 bool IsInternal = false);
 
 public record CommentResponse(
-    Guid Id, string AuthorId, string Body, bool IsInternal, DateTimeOffset CreatedAt);
+    Guid Id, string AuthorId, string AuthorName, string Body, bool IsInternal, DateTimeOffset CreatedAt);

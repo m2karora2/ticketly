@@ -280,6 +280,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             authorId: string;
+            authorName: string;
             body: string;
             isInternal: boolean;
             /** Format: date-time */
@@ -313,6 +314,7 @@ export interface components {
             priority: components["schemas"]["TicketPriority"];
             customerId: string;
             assigneeId: null | string;
+            assigneeName: null | string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -332,6 +334,7 @@ export interface components {
             priority: components["schemas"]["TicketPriority"];
             customerId: string;
             assigneeId: null | string;
+            assigneeName: null | string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -343,7 +346,8 @@ export interface components {
         TicketStatus: "Open" | "InProgress" | "Resolved";
         UpdateTicketRequest: {
             status: null | components["schemas"]["TicketStatus"];
-            assigneeId: null | string;
+            /** @default false */
+            assignToMe: boolean;
         };
     };
     responses: never;

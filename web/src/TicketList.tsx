@@ -5,7 +5,7 @@ import type { components } from "./api/schema";
 //type Ticket = components["schemas"]["TicketResponse"];
 type Paged = components["schemas"]["PagedResponseOfTicketResponse"];
 
-export function TicketList() {
+export function TicketList({ onSelect }: { onSelect: (id: string) => void }) {
   const auth = useAuth();
 
   const { data, isPending, error } = useQuery({
@@ -27,7 +27,9 @@ export function TicketList() {
     <ul className="tickets">
       {data.items.map((t) => (
         <li key={t.id}>
-          <span className="ticket-title">{t.title}</span>
+          <button className="link ticket-title" onClick={() => onSelect(t.id)}>
+            {t.title}
+          </button>
           <span className="badges">
             <span className={`badge status-${t.status}`}>{t.status}</span>
             <span className={`badge priority-${t.priority}`}>{t.priority}</span>

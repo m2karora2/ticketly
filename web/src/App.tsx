@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { CreateTicketForm } from "./CreateTicketForm";
 import { TicketList } from "./TicketList";
+import { TicketDetail } from "./ticketDetail";
 
 function App() {
   const auth = useAuth();
   const [apiResult, setApiResult] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function callApi() {
     const res = await fetch("http://localhost:5057/me", {
@@ -55,8 +57,14 @@ function App() {
 
       <section className="card">
         <h2>Tickets</h2>
-        <TicketList />
+        <TicketList onSelect={setSelectedId} />
       </section>
+
+      {selectedId && (
+        <section className="card">
+          <TicketDetail id={selectedId} />
+        </section>
+      )}
 
       <details className="card">
         <summary>Debug</summary>
